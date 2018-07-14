@@ -3,11 +3,11 @@
  * @author Michael Strobel, michael@kryops.de
  */
 var remoteApp = {
-	
+
 	/*
 	 * PROPERTIES
 	 */
-	
+
 	/**
 	 * application-wide configuration
 	 */
@@ -15,19 +15,19 @@ var remoteApp = {
 		// WebSocket server location
 		socketHost: window.location.hostname,
 		socketPort: 1338,
-		
+
 		// maximal CSS top value for .fader-handle elements
 		maxHandlePercent: 85,
-		
+
 		// maximal value for fader messages
 		maxFaderValue: 255,
-		
-		// height difference #content-.fader for computation fallback [e.g. CSS calc(100% - 210px)] 
+
+		// height difference #content-.fader for computation fallback [e.g. CSS calc(100% - 210px)]
 		faderHeightDifference: 210,
 
         // minimum distance to send fader change value
 		faderMoveMinValueDistance: 5,
-		
+
 		// maximal value for level display
 		maxLevelValue: 32,
 
@@ -35,7 +35,7 @@ var remoteApp = {
         channelCount: 32,
         auxCount: 8,
         busCount: 8,
-		
+
 		/**
 		 * configuration for initial tabs and controls
 		 *
@@ -70,7 +70,7 @@ var remoteApp = {
 					["sum", 0, "S"]
 				]
 			},
-			
+
 			ch1732: {
 				label: "CH 17-32",
 				faders: [
@@ -93,7 +93,7 @@ var remoteApp = {
 					["sum", 0, "S"]
 				]
 			},
-			
+
 			aux1: {
 				label: "AUX 1",
 				faders: [
@@ -185,7 +185,7 @@ var remoteApp = {
                     ["sum", 0, "S"]
                 ]
             },
-			
+
 			master: {
 				label: "MASTER",
 				faders: [
@@ -218,7 +218,7 @@ var remoteApp = {
             groups: []
         }
 	},
-	
+
 	/**
 	 * current application status
 	 */
@@ -227,73 +227,73 @@ var remoteApp = {
 		 * control status; control-id = target+num2+num
 		 * control-id: value
 		 */
-		
+
 		// current status of the on-buttons
 		on: {},
-		
+
 		// current fader values
 		fader: {},
-		
+
 		// current channel levels
 		level: {},
-		
-		
+
+
 		// id of the currently active tab
 		activeTab: false,
-		
+
 		// current height of a fader; used for value computation when dragging handle
 		faderHeight: 0,
-		
+
 		// currently moved faders [id: true]; disabled automatic repositioning on value change
 		movedFaders: {},
-		
+
 		// initial waiting for document.ready and socket initialization
 		pendingOperations: 2
 	},
-	
+
 	/**
 	 * WebSocket connection to the server
 	 * @property {WebSocket}
 	 */
 	connection: false,
-	
-	
+
+
 	/*
 	 * METHODS
 	 */
 
-	
+
 	/**
 	 * initializes the application
 	 */
 	init: function() {
 		var app = this;
-		
+
 		app.openSocketConnection();
-		
+
 		// generate content and bind event handlers when page is loaded
 		$(document).ready(function() {
 			app.bindGlobalEventHandlers();
 			app.generatePage();
 			app.refreshFaderHeight();
-			
+
 			app.start();
 		});
 	},
-	
+
 	/**
 	 * counts down the pendingOperations status and syncs with the mixer
 	 * when the entire application is loaded
 	 */
 	start: function() {
-		
+
 		// start after socket init and document.ready
 		this.status.pendingOperations--;
-		
+
 		if(this.status.pendingOperations > 0) {
 			return;
 		}
-		
+
 		// sync with mixer
 		$('#loading-dialog-text').html('Syncing with the mixing console...');
 
@@ -309,41 +309,41 @@ var remoteApp = {
 
         this.hideError();
 	},
-	
+
 	/**
 	 * opens the WebSocket and binds message and error handlers
 	 */
 	openSocketConnection: function() {
 		var app = this;
-		
+
 		window.WebSocket = window.WebSocket || window.MozWebSocket;
-		
+
 		if(!window.WebSocket) {
 			$(document).ready(function() {
 				app.displayError('Your browser does not support WebSockets!<br />Please use a modern browser like Mozilla Firefox or Google Chrome.');
 			});
-			
+
 			return;
 		}
-		
+
 		app.connection = new WebSocket('ws://' + app.config.socketHost + ':' + app.config.socketPort);
-		
+
 		app.connection.onopen = function () {
 			app.start();
 		};
-		
+
 		app.connection.onerror = function(error) {
 			console.log('WebSocket error', error);
 			app.displayError('A WebSocket error occured!', true);
 		};
-		
+
 		app.connection.onclose = function() {
 			app.displayError('The connection to the server has been lost!', true);
 			window.setTimeout(function() {
 				app.openSocketConnection();
 			}, 1000);
 		};
-		
+
 		app.connection.onmessage = function(message) {
 			try {
                 app.messageHandler(JSON.parse(message.data));
@@ -354,7 +354,7 @@ var remoteApp = {
             }
 		};
 	},
-	
+
 	/**
 	 * generates the navigation tabs and controls
 	 * can be run again when the configuration changes
@@ -364,17 +364,17 @@ var remoteApp = {
 
 			generateControl = function(tab, target, num, bigLabel, num2) {
 				var id = target + (num2 || '') + num;
-				
+
 				// set intial status values
 				if(typeof app.status.on[id] == 'undefined') {
 					app.status.fader[id] = app.config.maxFaderValue;
-					
+
 					if(target != 'auxsend') {
 						app.status.on[id] = true;
 						app.status.level[id] = 0;
 					}
 				}
-				
+
 				// generate HTML
 				return '<div class="control" data-id="' + id + '" data-target="' + target + '" data-number="' + num + '" data-number2="' + (num2 || '') + '">\
 					<div class="on-button">\
@@ -403,23 +403,23 @@ var remoteApp = {
 				if(active) {
 					app.status.activeTab = id;
 				}
-				
+
 				return '<li data-tab="' + id + '"' + (title ? ' title="' + title + '"' : '') + ' class="autogenerated' + (active ? ' active' : '') + '">' + label + '</li>';
 			},
             generateConfigurationInput = function(id, label) {
                 return '<p class="autogenerated"><label>' + label + '</label><input type="text" data-id="' + id + '" /></p>';
             },
-			
+
 			naviHtml = '',
 			contentHtml = '',
             configChannelHtml = '',
             configMasterHtml = '',
-			
+
 			tabid, i, tab, fader, tabIsActive,
-			
+
 			activeTabSelected = !!app.status.activeTab,
 			firstTab = true;
-		
+
 		// remove perviously auto-generated elements if method is called multiple times
 		$('.autogenerated').remove();
 
@@ -458,21 +458,21 @@ var remoteApp = {
         for(i = 1; i <= app.config.busCount; i++) {
             configMasterHtml += generateConfigurationInput('bus'+i, 'B'+i);
         }
-		
+
 		$('#navi').prepend(naviHtml).removeClass('hidden');
 		$('#content').append(contentHtml);
         $('#configuration_channels').html(configChannelHtml);
         $('#configuration_master').html(configMasterHtml);
-		
+
 		// update controls in the currently active tab
 		// to display the right values when the method has been called again
 		app.updateTabControls();
-		
+
 		app.bindDynamicEventHandlers();
 
         app.refreshConfiguration();
 	},
-	
+
 	/**
 	 * binds event handlers for
 	 * 	fader dragging
@@ -531,11 +531,11 @@ var remoteApp = {
 				$(this).parents('.control')
 			);
 		});
-		
+
 		// tab navigation
 		$navi.on('click', 'li', function() {
 			var $this = $(this);
-			
+
 			if($this.data('tab')) {
 				app.switchTab($this.data('tab'), $this);
 			}
@@ -544,7 +544,7 @@ var remoteApp = {
 				app.toggleFullScreen();
 			}
 		});
-		
+
 		// re-compute fader height on window resize
 		$(window).on('resize', function() {
 			app.refreshFaderHeight();
@@ -555,7 +555,7 @@ var remoteApp = {
             app.saveConfiguration();
         });
 	},
-	
+
 	/**
 	 * bind touch event handlers for dynamically generated controls
 	 * - faders
@@ -563,7 +563,7 @@ var remoteApp = {
 	 */
 	bindDynamicEventHandlers: function() {
 		var app = this;
-		
+
 		// move faders
 
 		[].forEach.call(document.querySelectorAll('.fader'), function(el) {
@@ -634,9 +634,9 @@ var remoteApp = {
 
 		});
 	},
-	
+
 	eventAbstraction: {
-		
+
 		/**
 		 * touchstart/mousedown/pointerdown/MSPointerDown on fader
 		 * @param $control {jQuery} .control object
@@ -644,12 +644,12 @@ var remoteApp = {
 		 */
 		faderStart: function($control, position) {
 			var app = remoteApp;
-			
+
 			app.status.movedFaders[$control.data('id')] = true;
 			$control.data('originalPosition', $control.find('.fader-handle').position().top);
 			$control.data('touchPosition', position);
 		},
-		
+
 		/**
 		 * touchmove/mousemove/pointermove/MSPointerMove on fader
 		 * @param $control {jQuery} .control object
@@ -675,26 +675,26 @@ var remoteApp = {
 			var newPositionPx = $control.data('originalPosition')+position - $control.data('touchPosition'),
 				newPositionPercent = newPositionPx/app.status.faderHeight * 100,
 				newValue;
-			
+
 			if(newPositionPercent < 0) {
 				newPositionPercent = 0;
 			}
 			else if(newPositionPercent > app.config.maxHandlePercent) {
 				newPositionPercent = app.config.maxHandlePercent;
 			}
-			
+
 			$handle.css('top', newPositionPercent + '%');
-			
+
 			// compute and send new value
 			newValue = Math.round(
 				(1 - newPositionPercent/app.config.maxHandlePercent) * app.config.maxFaderValue
 			);
-			
+
 			// send only changed values
 			if(Math.abs(newValue-app.status.fader[id]) < app.config.faderMoveMinValueDistance) {
 				return;
 			}
-			
+
 			app.status.fader[id] = newValue;
 
             // apply to all faders of group
@@ -735,7 +735,7 @@ var remoteApp = {
         faderStop: function($control) {
             remoteApp.status.movedFaders[$control.data('id')] = false;
         },
-		
+
 		/**
 		 * touch/click on-button
 		 * @param $control {jQuery} .control object
@@ -750,16 +750,16 @@ var remoteApp = {
                 $controls = $('.control:visible'),
 
                 i, j, groupId;
-			
+
 			// override aux sends: toggle channel on-status
 			if(target == 'auxsend') {
 				id = 'channel' + num;
 				target = 'channel';
 				newValue = !app.status.on[id];
 			}
-			
+
 			app.status.on[id] = newValue;
-			
+
 			if(newValue) {
 				$control.removeClass('control-disabled');
 			}
@@ -802,9 +802,9 @@ var remoteApp = {
 				newValue
 			);
 		}
-		
+
 	},
-	
+
 	/**
 	 * refreshes the height of faders when window resizes
 	 * used for value computation after dragging
@@ -812,7 +812,7 @@ var remoteApp = {
 	refreshFaderHeight: function() {
 		var app = this,
 			$firstFader = $('.fader:visible').first();
-		
+
 		if($firstFader.length) {
 			app.status.faderHeight = $firstFader.height();
 		}
@@ -821,7 +821,7 @@ var remoteApp = {
 			app.status.faderHeight = $('#content').height()-app.config.faderHeightDifference;
 		}
 	},
-	
+
 	/**
 	 * switches to the tab with the given id
 	 * @param {String} id
@@ -832,18 +832,18 @@ var remoteApp = {
 			$navi = $('#navi'),
 			$tab = $this || $navi.find('li[data-tab="' + id + '"]'),
 			id = $tab.data('tab');
-			
+
 		app.updateTabControls(id);
-		
+
 		$('.tabcontent[data-tab="' + app.status.activeTab + '"]').hide();
 		$navi.find('[data-tab="' + app.status.activeTab + '"]').removeClass('active');
-		
+
 		$('.tabcontent[data-tab="' + id + '"]').show();
 		$tab.addClass('active');
-		
+
 		app.status.activeTab = id;
 	},
-	
+
 	/**
 	 * handles socket messages, updates application status and control displays
 	 * @param {object} message
@@ -853,15 +853,15 @@ var remoteApp = {
 		var app = this,
 			id = message.target ? message.target+(message.num2 || '')+message.num : false,
 			controlIsVisible = false,
-			
+
 			controls, i, updateType;
-		
+
 		// update all levels with one message
 		if(message.type === 'level') {
 			for(i in message.levels) {
 				app.status.level['channel'+i] = message.levels[i];
 			}
-			
+
 			app.updateTabControls(false, {level: true});
 		}
         // complete sync
@@ -880,11 +880,11 @@ var remoteApp = {
         }
 		// update fader and on-button per channel
 		else if(app.status[message.type] && app.status[message.type][id] !== message.value) {
-			
+
 			// determine if control is currently visible
 			if(app.config.controls[app.status.activeTab]) {
 				controls = app.config.controls[app.status.activeTab].faders;
-				
+
 				for(i in controls) {
 					if(controls[i][0] == message.target &&
 						(!message.num || controls[i][1] == message.num) &&
@@ -897,38 +897,38 @@ var remoteApp = {
 					}
 				}
 			}
-			
+
 			app.status[message.type][id] = message.value;
-			
+
 			if(controlIsVisible) {
 				updateType = {};
 				updateType[message.type] = true;
-				
+
 				app.updateControl(message.target, message.num, message.num2, updateType);
 			}
 		}
 	},
-	
+
 	/**
 	 * update all controls in the selected tab
 	 * @param {String} tab tab-id, default currently active tab
 	 * @param {object} update @see remoteApp.updateControl()
 	 */
 	updateTabControls: function(tab, update) {
-		
+
 		if(!tab) {
 			tab = this.status.activeTab;
 		}
-		
+
 		var app = this,
 			$controls = $('.tabcontent[data-tab="' + tab + '"] .control');
-		
+
 		// refresh control status in new tab
 		$controls.each(function() {
 			app.updateControl($(this).data('target'), $(this).data('number'), $(this).data('number2'), update);
 		});
 	},
-	
+
 	/**
 	 * updates a control to display its current values
 	 * @param {String} target channel, sum, aux, bus
@@ -943,9 +943,9 @@ var remoteApp = {
 			oldId = id,
 			$control = $('.control[data-id="' + id + '"]'),
 			$onControl = $control,
-			
+
 			faderPercent, levelPercent;
-		
+
 		if(!update) {
 			update = {
 				on: true,
@@ -953,45 +953,45 @@ var remoteApp = {
 				level: true
 			};
 		}
-		
+
 		// update on-button status
 		if(update.on) {
 			if(target == 'auxsend') {
 				id = 'channel' + num;
 			}
-			
+
 			$onControl = $control.add($('.control[data-target="auxsend"][data-number="' + num + '"]'));
-			
+
 			if(app.status.on[id]) {
 				$onControl.removeClass('control-disabled');
 			}
 			else {
 				$onControl.addClass('control-disabled');
 			}
-			
+
 			id = oldId;
 		}
-		
+
 		// update fader position if fader is not being moved
 		if(update.fader && !app.status.movedFaders[id]) {
 			faderPercent = (1 - app.status.fader[id]/app.config.maxFaderValue) * app.config.maxHandlePercent;
 			$control.find('.fader-handle').css('top', faderPercent + '%');
 		}
-		
+
 		// update displayed meter level
 		if(update.level) {
-			
+
 			// show channel level on aux sends
 			if(target == 'auxsend') {
 				id = 'channel' + num;
 			}
-			
+
 			levelPercent = (
 				1 - Math.pow(app.status.level[id], 2) / Math.pow(app.config.maxLevelValue,2)
 			) * 100;
 			$control.find('.fader-level').css('height', levelPercent + '%');
 		}
-		
+
 	},
 
     /**
@@ -1122,7 +1122,7 @@ var remoteApp = {
             $('#configuration_save').html('Save configuration');
         }, 5000);
     },
-	
+
 	/**
 	 * send WebSocket message to the server
 	 * @param {object} obj
@@ -1135,7 +1135,7 @@ var remoteApp = {
 			console.log('invalid socket output message: ', obj);
 		}
 	},
-	
+
 	/**
 	 * send message to the server
 	 * @param {string} type on, fader, level
@@ -1153,7 +1153,7 @@ var remoteApp = {
 			num2: num2 || 0
 		});
 	},
-	
+
 	/**
 	 * display error message
 	 * @param {String} message
@@ -1161,21 +1161,21 @@ var remoteApp = {
 	 */
 	displayError: function(message, showRefreshButton) {
 		$('#error-dialog-text').html(message);
-		
+
 		if(showRefreshButton) {
 			$('#error-dialog-reload').show();
 		}
 		else {
 			$('#error-dialog-reload').hide();
 		}
-		
+
 		$('#error-dialog').fadeIn(1000);
 	},
 
 	hideError: function() {
         $('#error-dialog').fadeOut(1000);
 	}
-	
+
 };
 
 remoteApp.init();
