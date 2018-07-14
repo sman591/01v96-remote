@@ -37,7 +37,7 @@ body {
 
 #headline {
   font-family: Segoe UI Semilight, Calibri, Sans-Serif;
-  font-size: 175%;
+  font-size: 120%;
   float: right;
   margin-right: 1em;
   margin-top: -8px;
@@ -135,7 +135,7 @@ body {
   position: relative;
   height: 300px;
   min-height: 150px;
-  height: calc(100% - 210px);
+  height: calc(100% - 150px);
 }
 
 .fader-bar {
