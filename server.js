@@ -1,11 +1,11 @@
-console.log('\n\n=== 01v96 Remote server by Michael Strobel ===\n\n');
+console.log("\n\n=== 01v96 Remote server by Michael Strobel ===\n\n");
 
 // global application object and base configuration
 
 var app = {
     config: {
-        staticPort: 1337,
-        webSocketPort: 1338
+        staticPort: 1333,
+        webSocketPort: 1334
     },
 
     clientConfig: {

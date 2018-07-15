@@ -13,7 +13,7 @@ var remoteApp = {
   config: {
     // WebSocket server location
     socketHost: window.location.hostname,
-    socketPort: 1338,
+    socketPort: 1334,
 
     // maximal CSS top value for .fader-handle elements
     maxHandlePercent: 85,
